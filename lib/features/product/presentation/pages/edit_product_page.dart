@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:billing_app/core/widgets/input_label.dart';
 import 'package:billing_app/core/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
@@ -30,9 +31,9 @@ class _EditProductPageState extends State<EditProductPage> {
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 80,
+      maxWidth: 600,
+      maxHeight: 600,
+      imageQuality: 50,
     );
     if (pickedFile != null) {
       setState(() {
@@ -108,7 +109,13 @@ class _EditProductPageState extends State<EditProductPage> {
                             : widget.product.image != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
-                                    child: Image.file(File(widget.product.image!), fit: BoxFit.cover),
+                                    child: widget.product.image!.startsWith('/') || widget.product.image!.contains(':\\')
+                                        ? Image.file(File(widget.product.image!), fit: BoxFit.cover)
+                                        : Image.memory(
+                                            base64Decode(widget.product.image!.replaceAll(RegExp(r'\s+'), '')),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (ctx, err, stack) => const Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                                          ),
                                   )
                                 : const Column(
                                     mainAxisAlignment: MainAxisAlignment.center,

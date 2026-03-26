@@ -51,8 +51,8 @@ class _SplashPageState extends State<SplashPage> {
               tag: 'logo',
               child: Image.asset(
                 'lib/images/logo.png',
-                width: 150, // Slightly larger
-                height: 150,
+                width: 250, // Much larger
+                height: 250,
                 errorBuilder: (context, error, stackTrace) => 
                   const Icon(Icons.calculate, size: 100, color: AppTheme.primaryColor),
               ),

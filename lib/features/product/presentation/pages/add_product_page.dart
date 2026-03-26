@@ -31,9 +31,9 @@ class _AddProductPageState extends State<AddProductPage> {
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 80,
+      maxWidth: 600,
+      maxHeight: 600,
+      imageQuality: 50,
     );
     if (pickedFile != null) {
       setState(() {

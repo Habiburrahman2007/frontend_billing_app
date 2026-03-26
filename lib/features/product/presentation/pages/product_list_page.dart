@@ -196,7 +196,11 @@ class _ProductListPageState extends State<ProductListPage> {
                                     borderRadius: BorderRadius.circular(8),
                                     child: product.image!.startsWith('/') || product.image!.contains(':\\')
                                         ? Image.file(File(product.image!), fit: BoxFit.cover)
-                                        : Image.memory(base64Decode(product.image!), fit: BoxFit.cover),
+                                        : Image.memory(
+                                            base64Decode(product.image!.replaceAll(RegExp(r'\s+'), '')),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (ctx, err, stack) => Icon(Icons.broken_image, color: Colors.grey[400]),
+                                          ),
                                   )
                                 : Icon(Icons.image, color: Colors.grey[400]),
                           ),
