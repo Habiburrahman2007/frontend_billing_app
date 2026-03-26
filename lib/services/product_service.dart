@@ -15,10 +15,17 @@ class ProductService {
 
   Future<String?> _toBase64(String? path) async {
     if (path == null || path.isEmpty) return null;
-    final file = File(path);
-    if (!await file.exists()) return path; // Might be a URL or already base64
-    final bytes = await file.readAsBytes();
-    return base64Encode(bytes);
+
+    // If it already looks like base64 (no path separators), return as-is
+    if (!path.contains('/') && !path.contains('\\')) return path;
+
+    try {
+      final bytes = await File(path).readAsBytes();
+      return base64Encode(bytes);
+    } catch (_) {
+      // Path unreadable (e.g. stale cached path or URL), skip image
+      return null;
+    }
   }
 
   Future<List<ProductModel>> getProducts() async {
