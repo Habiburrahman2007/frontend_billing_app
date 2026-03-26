@@ -12,10 +12,12 @@ class AppValidators {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter a price';
     }
-    if (double.tryParse(value) == null) {
+    // Strip dot thousand-separators before parsing
+    final cleaned = value.replaceAll('.', '');
+    if (double.tryParse(cleaned) == null) {
       return 'Please enter a valid number';
     }
-    if (double.parse(value) < 0) {
+    if (double.parse(cleaned) < 0) {
       return 'Price cannot be negative';
     }
     return null;
