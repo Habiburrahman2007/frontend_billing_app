@@ -249,22 +249,32 @@ class _AddProductPageState extends State<AddProductPage> {
                                   ),
                                 ],
                               )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                            : Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                                 children: [
-                                  Icon(Icons.add_a_photo,
-                                      size: 36,
-                                      color: Colors.grey[500]),
-                                  const SizedBox(height: 8),
-                                  Text('Tambah Foto',
-                                      style: TextStyle(
-                                          color: Colors.grey[500],
-                                          fontSize: 12)),
-                                  const SizedBox(height: 2),
-                                  Text('Galeri / Kamera',
-                                      style: TextStyle(
-                                          color: Colors.grey[400],
-                                          fontSize: 10)),
+                                  // Direct Camera Option
+                                  _buildImageSourceButton(
+                                    icon: Icons.camera_alt_rounded,
+                                    label: 'Kamera',
+                                    color: Colors.teal,
+                                    onTap: () =>
+                                        _pickImage(ImageSource.camera),
+                                  ),
+                                  VerticalDivider(
+                                    color: Colors.grey[300],
+                                    indent: 25,
+                                    endIndent: 25,
+                                    thickness: 1,
+                                  ),
+                                  // Direct Gallery Option
+                                  _buildImageSourceButton(
+                                    icon: Icons.photo_library_rounded,
+                                    label: 'Galeri',
+                                    color: AppTheme.primaryColor,
+                                    onTap: () =>
+                                        _pickImage(ImageSource.gallery),
+                                  ),
                                 ],
                               ),
                       ),
@@ -362,5 +372,31 @@ class _AddProductPageState extends State<AddProductPage> {
           icon: Icons.add_circle,
           label: 'Add Product',
         ));
+  }
+
+  Widget _buildImageSourceButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

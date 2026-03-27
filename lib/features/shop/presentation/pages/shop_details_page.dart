@@ -83,10 +83,76 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _showImageSourceSheet() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'Pilih Sumber Logo',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded,
+                      color: AppTheme.primaryColor),
+                ),
+                title: const Text('Pilih dari Galeri'),
+                subtitle: const Text('Gunakan logo dari galeri HP'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded,
+                      color: Colors.teal),
+                ),
+                title: const Text('Ambil Foto'),
+                subtitle: const Text('Ambil foto langsung dengan kamera'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source != null) {
+      await _pickImage(source);
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 512,
         maxHeight: 512,
         imageQuality: 85,
@@ -169,50 +235,88 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Center(
-                      child: GestureDetector(
-                        onTap: _pickImage,
-                        child: Stack(
-                          alignment: Alignment.bottomRight,
-                          children: [
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey[200],
-                              ),
-                              child: ClipOval(
-                                child: _logoBytes != null
-                                    ? Image.memory(
-                                        _logoBytes!,
-                                        width: 100,
-                                        height: 100,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) =>
-                                            Icon(Icons.store, size: 50, color: Colors.grey[400]),
-                                      )
-                                    : (_existingLogoUrl != null && _existingLogoUrl!.startsWith('http'))
-                                        ? Image.network(
-                                            _existingLogoUrl!,
-                                            width: 100,
-                                            height: 100,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) =>
-                                                Icon(Icons.store, size: 50, color: Colors.grey[400]),
-                                          )
-                                        : Icon(Icons.store, size: 50, color: Colors.grey[400]),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: AppTheme.primaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-                            ),
-                          ],
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey[200],
                         ),
+                        child: (_logoBytes != null ||
+                                (_existingLogoUrl != null &&
+                                    _existingLogoUrl!.startsWith('http')))
+                            ? GestureDetector(
+                                onTap: _showImageSourceSheet,
+                                child: Stack(
+                                  alignment: Alignment.bottomRight,
+                                  children: [
+                                    ClipOval(
+                                      child: _logoBytes != null
+                                          ? Image.memory(
+                                              _logoBytes!,
+                                              width: 120,
+                                              height: 120,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) =>
+                                                      Icon(Icons.store,
+                                                          size: 60,
+                                                          color:
+                                                              Colors.grey[400]),
+                                            )
+                                          : Image.network(
+                                              _existingLogoUrl!,
+                                              width: 120,
+                                              height: 120,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) =>
+                                                      Icon(Icons.store,
+                                                          size: 60,
+                                                          color:
+                                                              Colors.grey[400]),
+                                            ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: const BoxDecoration(
+                                        color: AppTheme.primaryColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.edit,
+                                          color: Colors.white, size: 16),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  // Direct Camera Option
+                                  _buildImageSourceButton(
+                                    icon: Icons.camera_alt_rounded,
+                                    label: 'Kamera',
+                                    color: Colors.teal,
+                                    onTap: () =>
+                                        _pickImage(ImageSource.camera),
+                                  ),
+                                  VerticalDivider(
+                                    color: Colors.grey[300],
+                                    indent: 30,
+                                    endIndent: 30,
+                                    thickness: 1,
+                                  ),
+                                  // Direct Gallery Option
+                                  _buildImageSourceButton(
+                                    icon: Icons.photo_library_rounded,
+                                    label: 'Galeri',
+                                    color: AppTheme.primaryColor,
+                                    onTap: () =>
+                                        _pickImage(ImageSource.gallery),
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -310,6 +414,32 @@ class _ShopDetailsPageState extends State<ShopDetailsPage> {
       validator: validator,
       decoration: InputDecoration(
         hintText: hint,
+      ),
+    );
+  }
+
+  Widget _buildImageSourceButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

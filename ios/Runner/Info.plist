@@ -46,7 +46,9 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>We need camera access to scan barcodes.</string>
+	<string>We need camera access to take product photos and scan barcodes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to pick product images.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>We need bluetooth to connect to thermal printers.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
