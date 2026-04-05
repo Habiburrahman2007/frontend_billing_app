@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'dart:io';
+import 'package:billing_app/core/utils/image_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -194,13 +193,11 @@ class _ProductListPageState extends State<ProductListPage> {
                             child: product.image != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
-                                    child: product.image!.startsWith('/') || product.image!.contains(':\\')
-                                        ? Image.file(File(product.image!), fit: BoxFit.cover)
-                                        : Image.memory(
-                                            base64Decode(product.image!.replaceAll(RegExp(r'\s+'), '')),
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (ctx, err, stack) => Icon(Icons.broken_image, color: Colors.grey[400]),
-                                          ),
+                                    child: ImageHelper.buildProductImage(
+                                      product.image,
+                                      fit: BoxFit.cover,
+                                      errorWidget: Icon(Icons.broken_image, color: Colors.grey[400]),
+                                    ),
                                   )
                                 : Icon(Icons.image, color: Colors.grey[400]),
                           ),

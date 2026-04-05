@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:convert';
+import 'package:billing_app/core/utils/image_helper.dart';
 import 'package:billing_app/core/widgets/input_label.dart';
 import 'package:billing_app/core/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
@@ -91,6 +91,7 @@ class _EditProductPageState extends State<EditProductPage> {
   Future<void> _showImageSourceSheet() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -251,26 +252,14 @@ class _EditProductPageState extends State<EditProductPage> {
                                       ClipRRect(
                                         borderRadius:
                                             BorderRadius.circular(12),
-                                        child: widget.product.image!
-                                                    .startsWith('/') ||
-                                                widget.product.image!
-                                                    .contains(':\\')
-                                            ? Image.file(
-                                                File(widget.product.image!),
-                                                fit: BoxFit.cover)
-                                            : Image.memory(
-                                                base64Decode(widget.product
-                                                    .image!
-                                                    .replaceAll(
-                                                        RegExp(r'\s+'), '')),
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (ctx, err,
-                                                    stack) =>
-                                                  const Icon(
-                                                      Icons.broken_image,
-                                                      size: 40,
-                                                      color: Colors.grey),
-                                              ),
+                                        child: ImageHelper.buildProductImage(
+                                          widget.product.image,
+                                          fit: BoxFit.cover,
+                                          errorWidget: const Icon(
+                                              Icons.broken_image,
+                                              size: 40,
+                                              color: Colors.grey),
+                                        ),
                                       ),
                                       Positioned(
                                         bottom: 6,
