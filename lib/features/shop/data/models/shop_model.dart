@@ -1,3 +1,4 @@
+import '../../../../core/constants/api_constants.dart';
 import '../../domain/entities/shop.dart';
 
 class ShopModel extends Shop {
@@ -35,6 +36,7 @@ class ShopModel extends Shop {
         );
 
   factory ShopModel.fromJson(Map<String, dynamic> json) {
+    final logo = json['logo_url'] as String?;
     return ShopModel(
       name: json['name'] as String? ?? '',
       addressLine1: json['address_line1'] as String? ?? '',
@@ -42,7 +44,7 @@ class ShopModel extends Shop {
       phoneNumber: json['phone_number'] as String? ?? '',
       upiId: json['upi_id'] as String? ?? '',
       footerText: json['footer_text'] as String? ?? '',
-      logoUrl: json['logo_url'] as String?,
+      logoUrl: (logo != null && logo.isNotEmpty) ? getFullImageUrl(logo) : null,
     );
   }
 

@@ -185,7 +185,7 @@ class _AddProductPageState extends State<AddProductPage> {
       );
 
       context.read<ProductBloc>().add(AddProduct(product));
-      context.pop();
+      // Jangan pop di sini — tunggu status success di BlocConsumer bawah
     }
   }
 
@@ -368,10 +368,31 @@ class _AddProductPageState extends State<AddProductPage> {
             ),
           ),
         ),
-        bottomNavigationBar: PrimaryButton(
-          onPressed: _submit,
-          icon: Icons.add_circle,
-          label: 'Add Product',
+        bottomNavigationBar: BlocConsumer<ProductBloc, ProductState>(
+          listener: (context, state) {
+            if (state.status == ProductStatus.success &&
+                state.message == 'Product added successfully') {
+              context.pop();
+            } else if (state.status == ProductStatus.error) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(state.message ?? 'Failed to add product'),
+                    backgroundColor: Colors.red),
+              );
+            }
+          },
+          builder: (context, state) {
+            return PrimaryButton(
+              onPressed:
+                  state.status == ProductStatus.loading ? null : _submit,
+              icon: state.status == ProductStatus.loading
+                  ? null
+                  : Icons.add_circle,
+              label: state.status == ProductStatus.loading
+                  ? 'Saving...'
+                  : 'Add Product',
+            );
+          },
         ));
   }
 

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../domain/entities/product.dart';
 
 class ProductModel extends Product {
@@ -31,13 +33,23 @@ class ProductModel extends Product {
         );
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    final image = json['image'] as String?;
+    final preview = (image != null && image.length > 100)
+        ? '${image.substring(0, 100)}... [total ${image.length} chars]'
+        : image;
+    debugPrint('[ProductModel.fromJson] raw image from server: $preview');
+    final resolvedImage =
+        (image != null && image.isNotEmpty) ? getFullImageUrl(image) : null;
+    debugPrint('[ProductModel.fromJson] resolved image: $resolvedImage');
     return ProductModel(
       id: json['id'].toString(),
       name: json['name'] as String? ?? '',
       barcode: json['barcode'] as String? ?? '',
       price: double.parse(json['price']?.toString() ?? '0'),
-      stock: json['stock'] is int ? json['stock'] as int : int.parse(json['stock']?.toString() ?? '0'),
-      image: json['image'] as String?,
+      stock: json['stock'] is int
+          ? json['stock'] as int
+          : int.parse(json['stock']?.toString() ?? '0'),
+      image: resolvedImage,
     );
   }
 
