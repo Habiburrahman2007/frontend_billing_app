@@ -1,37 +1,54 @@
 const String kBaseUrl = 'https://billing-app.vibedev.my.id/api';
 
 String getFullImageUrl(String path) {
-  if (path.isEmpty) return '';
+  if (path.isEmpty || path == 'null') return '';
 
-  // If it's already a full URL
+  // 1. If it's already a full URL
   if (path.startsWith('http')) {
     final baseUrl = kBaseUrl.replaceAll('/api', '');
+    // Fix common dev environment domain mismatch
     if (path.contains('billing-app.test')) {
       return path.replaceAll('http://billing-app.test', baseUrl);
     }
     return path;
   }
 
-  // If it's a base64 string (either raw or data URI)
-  // Base64 can contain '/' characters (e.g. JPEG base64 starts with /9j/),
-  // so we use a more robust check: if the string is long and composed only
-  // of valid base64 characters, treat it as base64.
+  // 2. If it's a base64 string (either raw or data URI)
   if (path.startsWith('data:image') || _isLikelyBase64(path)) {
     return path;
   }
 
+  // 3. Handle relative paths
   final baseUrl = kBaseUrl.replaceAll('/api', '');
 
   // Ensure path starts with /storage/ if it's a relative path to a product or logo
   String cleanPath = path;
-  if (!cleanPath.startsWith('http') &&
+  
+  // If it's just a filename (no directory), assume it's in storage/products/
+  if (!cleanPath.contains('/')) {
+    cleanPath = 'storage/products/$cleanPath';
+  }
+  // If it's a path but missing 'storage/' prefix
+  else if (!cleanPath.startsWith('http') &&
       !cleanPath.startsWith('data:') &&
       !cleanPath.startsWith('storage/') &&
       !cleanPath.startsWith('/storage/')) {
-    if (cleanPath.startsWith('/')) {
-      cleanPath = 'storage$cleanPath';
-    } else {
-      cleanPath = 'storage/$cleanPath';
+    
+    // If it starts with products/, prepend storage/
+    if (cleanPath.startsWith('products/') || cleanPath.startsWith('/products/')) {
+      if (cleanPath.startsWith('/')) {
+        cleanPath = 'storage$cleanPath';
+      } else {
+        cleanPath = 'storage/$cleanPath';
+      }
+    } 
+    // Otherwise, just prepend storage/
+    else {
+      if (cleanPath.startsWith('/')) {
+        cleanPath = 'storage$cleanPath';
+      } else {
+        cleanPath = 'storage/$cleanPath';
+      }
     }
   }
 
@@ -43,12 +60,14 @@ String getFullImageUrl(String path) {
     fullUrl = '$baseUrl/$cleanPath';
   }
 
-  // Remove potential double slashes (except after http:)
-  if (fullUrl.startsWith('https://')) {
-    return 'https://${fullUrl.substring(8).replaceAll('//', '/')}';
-  } else if (fullUrl.startsWith('http://')) {
-    return 'http://${fullUrl.substring(7).replaceAll('//', '/')}';
+  // Remove potential double slashes (except after http: or https:)
+  final protocolIndex = fullUrl.indexOf('://');
+  if (protocolIndex != -1) {
+    final protocol = fullUrl.substring(0, protocolIndex + 3);
+    final rest = fullUrl.substring(protocolIndex + 3);
+    return '$protocol${rest.replaceAll('//', '/')}';
   }
+  
   return fullUrl.replaceAll('//', '/');
 }
 

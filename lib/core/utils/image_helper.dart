@@ -37,13 +37,13 @@ class ImageHelper {
     final fallback = errorWidget ??
         const Icon(Icons.broken_image, color: Colors.grey, size: 40);
 
-    if (imageSource == null || imageSource.isEmpty) return fallback;
+    if (imageSource == null || imageSource.isEmpty || imageSource == 'null') return fallback;
 
     // ── DEBUG: log the first 120 chars so we can see the format ─────────────
     final preview = imageSource.length > 120
         ? '${imageSource.substring(0, 120)}...'
         : imageSource;
-    debugPrint('[ImageHelper] image source (${imageSource.length} chars): $preview');
+    debugPrint('[ImageHelper] buildProductImage source (${imageSource.length} chars): $preview');
 
     // ── HTTP/HTTPS URL ───────────────────────────────────────────────────────
     if (imageSource.startsWith('http://') ||
@@ -51,7 +51,10 @@ class ImageHelper {
       return Image.network(
         imageSource,
         fit: fit,
-        errorBuilder: (_, __, ___) => fallback,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('[ImageHelper] Image.network failed for $imageSource: $error');
+          return fallback;
+        },
         loadingBuilder: (_, child, progress) => progress == null
             ? child
             : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -62,50 +65,72 @@ class ImageHelper {
     if (_isLocalFilePath(imageSource)) {
       final file = File(imageSource);
       if (file.existsSync()) {
-        return Image.file(file,
-            fit: fit, errorBuilder: (_, __, ___) => fallback);
+        return Image.file(
+          file,
+          fit: fit,
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint('[ImageHelper] Image.file failed for $imageSource: $error');
+            return fallback;
+          },
+        );
       }
-      return fallback;
+      debugPrint('[ImageHelper] local file does not exist at $imageSource');
+      // If local file path exists but file doesn't, maybe it's a relative server path?
+      // Fall through to other checks.
     }
 
     // ── Base64 (raw or data URI) ─────────────────────────────────────────────
     final bytes = tryDecodeBase64(imageSource);
     if (bytes != null && bytes.isNotEmpty) {
-      return Image.memory(bytes,
-          fit: fit, errorBuilder: (_, __, ___) => fallback);
+      return Image.memory(
+        bytes,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('[ImageHelper] Image.memory failed for base64 source: $error');
+          return fallback;
+        },
+      );
     }
 
     // ── Relative server path (e.g. /storage/products/...) ────────────────────
     // As a last resort, try converting it to a full URL via getFullImageUrl
     if (imageSource.startsWith('/storage/') ||
         imageSource.startsWith('storage/') ||
+        imageSource.startsWith('/products/') ||
         imageSource.startsWith('products/')) {
       final fullUrl = getFullImageUrl(imageSource);
       if (fullUrl.startsWith('http')) {
-        debugPrint('[ImageHelper] converted to URL: $fullUrl');
+        debugPrint('[ImageHelper] converting relative path to URL: $fullUrl');
         return Image.network(
           fullUrl,
           fit: fit,
-          errorBuilder: (_, __, ___) => fallback,
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint('[ImageHelper] Image.network (from relative) failed for $fullUrl: $error');
+            return fallback;
+          },
           loadingBuilder: (_, child, progress) => progress == null
               ? child
-              : const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2)),
+              : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         );
       }
     }
 
+    debugPrint('[ImageHelper] unhandled image source format: $preview');
     return fallback;
   }
 
   /// Check if a string looks like a local file system path
   static bool _isLocalFilePath(String path) {
+    if (path.isEmpty) return false;
+    
     // Windows paths: C:\, D:\, etc.
     if (path.contains(':\\')) return true;
-    // Android/iOS absolute paths, but NOT server paths like /storage/
+    
+    // Android/iOS absolute paths, but NOT server paths like /storage/ or /products/
     if (path.startsWith('/') &&
         !path.startsWith('/storage/') &&
-        !path.startsWith('/products/')) {
+        !path.startsWith('/products/') &&
+        !path.contains('://')) { // not a URL
       return true;
     }
     return false;

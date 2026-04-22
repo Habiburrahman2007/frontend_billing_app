@@ -110,14 +110,18 @@ class ProductService {
         kProductsEndpoint,
         data: data,
       );
-      // Log raw server response for image field
-      debugPrint('[ProductService.create] raw response image: ${response.data?['data']?['image'] ?? response.data?['image']}');
+      
       final responseData = response.data;
       final dataResult = responseData is Map && responseData.containsKey('data')
           ? responseData['data']
           : responseData;
+          
+      // Log raw server response for image field
+      debugPrint('[ProductService.create] raw response image: ${dataResult?['image'] ?? dataResult?['image_url']}');
+      
       return ProductModel.fromJson(dataResult as Map<String, dynamic>);
     } on DioException catch (e) {
+      debugPrint('[ProductService.create] error: ${e.message}');
       throw ApiClient.toApiException(e);
     }
   }
@@ -127,29 +131,52 @@ class ProductService {
       final imageValue = await _toBase64(product.image);
       final data = product.toJson();
 
-      // If imageValue is a URL, gambar tidak diubah user.
-      // Kita ekstrak path relatif ('/storage/...') dan kirim kembali ke server
-      // agar server tahu harus menjaga gambar yang sudah ada.
+      // If imageValue is a URL, it means the user didn't change the image.
+      // We should send back the relative path so the server knows to keep it.
       if (imageValue != null && imageValue.startsWith('http')) {
-        // Ambil path relatif dari URL lengkap (misal: /storage/products/xxx.jpg)
-        final uri = Uri.tryParse(imageValue);
-        data['image'] = uri?.path ?? imageValue;
+        final baseUrl = kBaseUrl.replaceAll('/api', '');
+        
+        // Clean the path: remove baseUrl and common storage prefixes
+        String relativePath = imageValue.replaceFirst(baseUrl, '');
+        
+        // Remove leading slash if any
+        if (relativePath.startsWith('/')) {
+          relativePath = relativePath.substring(1);
+        }
+        
+        // Remove 'storage/' if it's there, because the server usually
+        // expects paths relative to the storage root (e.g. 'products/xxx.jpg')
+        if (relativePath.startsWith('storage/')) {
+          relativePath = relativePath.replaceFirst('storage/', '');
+        }
+        
+        debugPrint('[ProductService.update] original URL: $imageValue');
+        debugPrint('[ProductService.update] extracted relative path: $relativePath');
+        
+        data['image'] = relativePath;
       } else {
+        // It's base64 (new image) or null
         data['image'] = imageValue;
       }
 
       data['_method'] = 'PUT';
 
+      debugPrint('[ProductService.update] sending data to $kProductsEndpoint/$id');
       final response = await _dio.post(
         '$kProductsEndpoint/$id',
         data: data,
       );
+      
       final responseData = response.data;
       final dataResult = responseData is Map && responseData.containsKey('data')
           ? responseData['data']
           : responseData;
+          
+      debugPrint('[ProductService.update] raw response image: ${dataResult?['image'] ?? dataResult?['image_url']}');
+      
       return ProductModel.fromJson(dataResult as Map<String, dynamic>);
     } on DioException catch (e) {
+      debugPrint('[ProductService.update] error: ${e.message}');
       throw ApiClient.toApiException(e);
     }
   }
