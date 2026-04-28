@@ -15,27 +15,33 @@ class ProductService {
   final _dio = ApiClient().dio;
 
   Future<String?> _toBase64(String? path) async {
-    if (path == null || path.isEmpty) return null;
+    if (path == null || path.isEmpty || path == 'null') return null;
 
-    // If it's a URL, return as-is (server will keep the existing image or handle it)
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    // If it's a URL, return as-is
+    if (path.startsWith('http')) return path;
 
     // If it's a data URI, return as-is
     if (path.startsWith('data:image')) return path;
 
     // If it already looks like base64, return as-is.
-    // Base64 can contain '/' (e.g. JPEG starts with /9j/), so we need a
-    // smarter check than just looking for path separators.
-    if (_looksLikeBase64(path)) return path;
+    if (_looksLikeBase64(path)) {
+      // If it's raw base64 without prefix, add it for better server compatibility
+      if (!path.startsWith('data:image')) {
+        return 'data:image/jpeg;base64,$path';
+      }
+      return path;
+    }
 
     try {
-      final bytes = await File(path).readAsBytes();
+      final file = File(path);
+      if (!await file.exists()) {
+        debugPrint('[_toBase64] File does not exist at $path');
+        return null;
+      }
+      final bytes = await file.readAsBytes();
       final base64String = base64Encode(bytes);
-      // Tambahkan prefix mime-type universal. Laravel/backend biasanya butuh ini
-      // untuk mem-parsing ekstensi file dari string base64.
       return 'data:image/jpeg;base64,$base64String';
     } catch (e) {
-      // Path unreadable (e.g. stale cached path), log and skip image
       debugPrint('[_toBase64] Failed to read file at $path: $e');
       return null;
     }
@@ -99,11 +105,16 @@ class ProductService {
     try {
       final base64Image = await _toBase64(product.image);
       final data = product.toJson();
-      // Log image preview (first 80 chars) to confirm what we're sending
+      
+      // Remove ID from payload as server usually generates it
+      data.remove('id');
+      
+      // Log image preview
       final imgPreview = base64Image != null
-          ? '${base64Image.substring(0, base64Image.length.clamp(0, 80))}...'
+          ? '${base64Image.substring(0, base64Image.length.clamp(0, 50))}...'
           : 'null';
-      debugPrint('[ProductService.create] sending image (first 80): $imgPreview');
+      debugPrint('[ProductService.create] payload image preview: $imgPreview');
+      
       data['image'] = base64Image;
 
       final response = await _dio.post(
@@ -116,9 +127,6 @@ class ProductService {
           ? responseData['data']
           : responseData;
           
-      // Log raw server response for image field
-      debugPrint('[ProductService.create] raw response image: ${dataResult?['image'] ?? dataResult?['image_url']}');
-      
       return ProductModel.fromJson(dataResult as Map<String, dynamic>);
     } on DioException catch (e) {
       debugPrint('[ProductService.create] error: ${e.message}');
@@ -132,28 +140,10 @@ class ProductService {
       final data = product.toJson();
 
       // If imageValue is a URL, it means the user didn't change the image.
-      // We should send back the relative path so the server knows to keep it.
+      // We should NOT send the image field at all to avoid confusing the backend.
       if (imageValue != null && imageValue.startsWith('http')) {
-        final baseUrl = kBaseUrl.replaceAll('/api', '');
-        
-        // Clean the path: remove baseUrl and common storage prefixes
-        String relativePath = imageValue.replaceFirst(baseUrl, '');
-        
-        // Remove leading slash if any
-        if (relativePath.startsWith('/')) {
-          relativePath = relativePath.substring(1);
-        }
-        
-        // Remove 'storage/' if it's there, because the server usually
-        // expects paths relative to the storage root (e.g. 'products/xxx.jpg')
-        if (relativePath.startsWith('storage/')) {
-          relativePath = relativePath.replaceFirst('storage/', '');
-        }
-        
-        debugPrint('[ProductService.update] original URL: $imageValue');
-        debugPrint('[ProductService.update] extracted relative path: $relativePath');
-        
-        data['image'] = relativePath;
+        data.remove('image');
+        debugPrint('[ProductService.update] image unchanged, removing from payload');
       } else {
         // It's base64 (new image) or null
         data['image'] = imageValue;
@@ -161,7 +151,6 @@ class ProductService {
 
       data['_method'] = 'PUT';
 
-      debugPrint('[ProductService.update] sending data to $kProductsEndpoint/$id');
       final response = await _dio.post(
         '$kProductsEndpoint/$id',
         data: data,
@@ -172,8 +161,6 @@ class ProductService {
           ? responseData['data']
           : responseData;
           
-      debugPrint('[ProductService.update] raw response image: ${dataResult?['image'] ?? dataResult?['image_url']}');
-      
       return ProductModel.fromJson(dataResult as Map<String, dynamic>);
     } on DioException catch (e) {
       debugPrint('[ProductService.update] error: ${e.message}');

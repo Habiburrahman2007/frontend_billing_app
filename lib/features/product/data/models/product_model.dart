@@ -33,20 +33,16 @@ class ProductModel extends Product {
         );
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
-    // Try both 'image' and 'image_url' fields
-    final rawImage = json['image'] as String? ?? json['image_url'] as String?;
+    // Prefer 'image_url' if it's a full URL, otherwise fallback to 'image'
+    final rawImage = json['image_url'] as String? ?? json['image'] as String?;
     
-    // Handle "null" string from some APIs
-    final image = (rawImage == 'null') ? null : rawImage;
-
-    final preview = (image != null && image.length > 100)
-        ? '${image.substring(0, 100)}... [total ${image.length} chars]'
-        : image;
-    debugPrint('[ProductModel.fromJson] raw image from server: $preview');
+    // Handle "null" string or empty strings from some APIs
+    final image = (rawImage == null || rawImage == 'null' || rawImage.isEmpty) 
+        ? null 
+        : rawImage;
 
     final resolvedImage =
-        (image != null && image.isNotEmpty) ? getFullImageUrl(image) : null;
-    debugPrint('[ProductModel.fromJson] resolved image: $resolvedImage');
+        (image != null) ? getFullImageUrl(image) : null;
 
     return ProductModel(
       id: json['id'].toString(),
