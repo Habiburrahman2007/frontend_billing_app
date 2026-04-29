@@ -2,7 +2,6 @@ import 'package:billing_app/core/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pretty_qr_code/pretty_qr_code.dart';
 
 import '../../../shop/presentation/bloc/shop_bloc.dart';
 import '../bloc/billing_bloc.dart';
@@ -18,6 +17,24 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   bool _shouldPrint = true;
+  final TextEditingController _cashController = TextEditingController();
+  double _cashReceived = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cashController.addListener(() {
+      setState(() {
+        _cashReceived = double.tryParse(_cashController.text) ?? 0;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _cashController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,6 +143,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               )).toList(),
                               totalAmount: billingState.totalAmount,
                               footerText: shopState is ShopLoaded ? shopState.shop.footerText : '',
+                              cashReceived: _cashReceived,
+                              change: _cashReceived > billingState.totalAmount ? _cashReceived - billingState.totalAmount : 0,
                             ),
                             const SizedBox(height: 120), // padding for bottom fixed bar
                           ],
@@ -160,30 +179,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 const SizedBox(
                                   height: 8,
                                 ),
-                                upiId.isNotEmpty
-                                    ? Column(
-                                        children: [
-                                          const Text(
-                                            'Scan to Pay',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black87,
-                                              letterSpacing: 1.1,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          SizedBox(
-                                            width: 180,
-                                            height: 180,
-                                            child: PrettyQrView.data(
-                                              data:
-                                                  'upi://pay?pa=$upiId&pn=$shopName&am=${billingState.totalAmount.toStringAsFixed(2)}&cu=IDR',
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : const SizedBox.shrink(),
                                 const SizedBox(height: 15),
                                 
                                 // Print Toggle
@@ -234,33 +229,61 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 15),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'GRAND TOTAL',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey[400],
-                                        letterSpacing: 1.2,
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'GRAND TOTAL',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey[400],
+                                          letterSpacing: 1.2,
+                                        ),
                                       ),
+                                      Text(
+                                        CurrencyFormatter.format(billingState.totalAmount),
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: -0.5,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Cash Input
+                                  TextField(
+                                    controller: _cashController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: 'Uang Diterima (Tunai)',
+                                      prefixText: 'Rp ',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                     ),
-                                    Text(
-                                      CurrencyFormatter.format(billingState.totalAmount),
-                                      style: const TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: -0.5,
-                                        color: Color(0xFF0F172A),
-                                      ),
+                                  ),
+                                  if (_cashReceived > billingState.totalAmount) ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Kembalian:', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green)),
+                                        Text(
+                                          CurrencyFormatter.format(_cashReceived - billingState.totalAmount),
+                                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16),
+                                        ),
+                                      ],
                                     ),
                                   ],
-                                ),
-                              ],
+                                  const SizedBox(height: 8),
+                                ],
+                              ),
                             ),
-                          ),
                           PrimaryButton(
                             onPressed: () {
                               if (shopState is ShopLoaded) {

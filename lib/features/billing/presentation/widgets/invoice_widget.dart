@@ -26,8 +26,8 @@ class InvoiceWidget extends StatelessWidget {
   final List<InvoiceItemData> items;
   final double totalAmount;
   final String? footerText;
-  final bool showQR;
-  final String? qrData;
+  final double? cashReceived;
+  final double? change;
 
   const InvoiceWidget({
     super.key,
@@ -40,8 +40,8 @@ class InvoiceWidget extends StatelessWidget {
     required this.items,
     required this.totalAmount,
     this.footerText,
-    this.showQR = false,
-    this.qrData,
+    this.cashReceived,
+    this.change,
   });
 
   @override
@@ -218,6 +218,38 @@ class InvoiceWidget extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (cashReceived != null && cashReceived! > 0) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'TUNAI',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                      ),
+                      Text(
+                        CurrencyFormatter.format(cashReceived!),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  if (change != null && change! > 0) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'KEMBALI',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                        ),
+                        Text(
+                          CurrencyFormatter.format(change!),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 16),
                 if (footerText != null && footerText!.isNotEmpty) ...[
                   const SizedBox(height: 8),
