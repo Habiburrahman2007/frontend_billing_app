@@ -4,6 +4,9 @@ import '../../data/models/transaction_model.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:intl/intl.dart';
+import '../../presentation/widgets/invoice_widget.dart';
+import '../../../../features/shop/presentation/bloc/shop_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class TransactionListPage extends StatefulWidget {
   const TransactionListPage({super.key});
@@ -139,35 +142,39 @@ class _TransactionListPageState extends State<TransactionListPage> {
                       const Divider(height: 1, indent: 16, endIndent: 16),
                       Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Items:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                            const SizedBox(height: 8),
-                            ...tx.items.map((item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${item.productName} x${item.quantity}',
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                  ),
-                                  Text(
-                                    CurrencyFormatter.format(item.subtotal),
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                                  ),
-                                ],
-                              ),
-                            )),
-                            if (tx.note.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              const Divider(),
-                              const SizedBox(height: 4),
-                              Text('Catatan: ${tx.note}', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey[600])),
-                            ],
-                          ],
+                        child: BlocBuilder<ShopBloc, ShopState>(
+                          builder: (context, shopState) {
+                            String shopName = 'SHOP';
+                            String address1 = '';
+                            String address2 = '';
+                            String phone = '';
+                            String footer = '';
+
+                            if (shopState is ShopLoaded) {
+                              shopName = shopState.shop.name;
+                              address1 = shopState.shop.addressLine1;
+                              address2 = shopState.shop.addressLine2;
+                              phone = shopState.shop.phoneNumber;
+                              footer = shopState.shop.footerText;
+                            }
+
+                            return InvoiceWidget(
+                              shopName: shopName,
+                              address1: address1,
+                              address2: address2,
+                              phone: phone,
+                              date: tx.createdAt ?? DateTime.now(),
+                              transactionId: tx.id?.toString(),
+                              items: tx.items.map((item) => InvoiceItemData(
+                                name: item.productName,
+                                quantity: item.quantity,
+                                price: item.productPrice,
+                                subtotal: item.subtotal,
+                              )).toList(),
+                              totalAmount: tx.totalAmount,
+                              footerText: footer.isNotEmpty ? footer : tx.note,
+                            );
+                          },
                         ),
                       ),
                     ],

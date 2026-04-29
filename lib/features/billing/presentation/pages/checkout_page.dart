@@ -7,6 +7,7 @@ import 'package:pretty_qr_code/pretty_qr_code.dart';
 import '../../../shop/presentation/bloc/shop_bloc.dart';
 import '../bloc/billing_bloc.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../widgets/invoice_widget.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -16,6 +17,8 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+  bool _shouldPrint = true;
+
   @override
   Widget build(BuildContext context) {
     const borderColor = Color(0xFFE5E5EA);
@@ -46,8 +49,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
           body: BlocConsumer<BillingBloc, BillingState>(
             listener: (context, state) {
               if (state.checkoutSuccess && !state.isPrinting && !state.printSuccess) {
-                 final shopState = context.read<ShopBloc>().state;
-                 if (shopState is ShopLoaded) {
+                if (_shouldPrint) {
+                  final shopState = context.read<ShopBloc>().state;
+                  if (shopState is ShopLoaded) {
                     context.read<BillingBloc>().add(
                         PrintReceiptEvent(
                             shopName: shopState.shop.name,
@@ -56,10 +60,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             phone: shopState.shop.phoneNumber,
                             upiId: shopState.shop.upiId,
                             footerText: shopState.shop.footerText));
-                 } else {
+                  } else {
                     context.read<BillingBloc>().add(ClearCartEvent());
                     context.go('/');
-                 }
+                  }
+                } else {
+                  // If printing is disabled, just finish up
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Checkout Successful'),
+                      backgroundColor: Colors.green));
+                  context.read<BillingBloc>().add(ClearCartEvent());
+                  context.go('/');
+                }
               }
               if (state.printSuccess) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -99,72 +111,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         child: Column(
                           children: [
                             // Table
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: borderColor),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  )
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Table(
-                                  border: const TableBorder(
-                                    horizontalInside:
-                                        BorderSide(color: borderColor),
-                                    bottom: BorderSide(color: borderColor),
-                                  ),
-                                  children: [
-                                    // Header row
-                                    TableRow(
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFF8FAFC),
-                                        border: Border(
-                                            bottom:
-                                                BorderSide(color: borderColor)),
-                                      ),
-                                      children: [
-                                        _buildHeaderCell(
-                                            'Product Name', TextAlign.left),
-                                        _buildHeaderCell(
-                                            'Price', TextAlign.right),
-                                        _buildHeaderCell(
-                                            'Total', TextAlign.right),
-                                      ],
-                                    ),
-                                    // Items rows
-                                    ...billingState.cartItems.map((item) {
-                                      return TableRow(
-                                        children: [
-                                          _buildDataCell(
-                                            '${item.quantity} x ${item.product.name}',
-                                            TextAlign.left,
-                                          ),
-                                          _buildDataCell(
-                                              CurrencyFormatter.format(item.product.price),
-                                              TextAlign.right,
-                                              isSubtitle: true),
-                                          _buildDataCell(
-                                              CurrencyFormatter.format(item.total),
-                                              TextAlign.right,
-                                              isBold: true),
-                                        ],
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
+                            // Invoice Preview
+                            InvoiceWidget(
+                              shopName: shopName,
+                              address1: shopState is ShopLoaded ? shopState.shop.addressLine1 : '',
+                              address2: shopState is ShopLoaded ? shopState.shop.addressLine2 : '',
+                              phone: shopState is ShopLoaded ? shopState.shop.phoneNumber : '',
+                              date: DateTime.now(),
+                              items: billingState.cartItems.map((item) => InvoiceItemData(
+                                name: item.product.name,
+                                quantity: item.quantity,
+                                price: item.product.price,
+                                subtotal: item.total,
+                              )).toList(),
+                              totalAmount: billingState.totalAmount,
+                              footerText: shopState is ShopLoaded ? shopState.shop.footerText : '',
                             ),
-                            const SizedBox(height: 24),
-
-                            const SizedBox(
-                                height: 120), // padding for bottom fixed bar
+                            const SizedBox(height: 120), // padding for bottom fixed bar
                           ],
                         ),
                       ),
@@ -222,6 +185,55 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       )
                                     : const SizedBox.shrink(),
                                 const SizedBox(height: 15),
+                                
+                                // Print Toggle
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _shouldPrint 
+                                      ? Theme.of(context).primaryColor.withValues(alpha: 0.05)
+                                      : Colors.grey[50],
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _shouldPrint 
+                                        ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
+                                        : Colors.grey[200]!,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.print_rounded,
+                                            size: 20,
+                                            color: _shouldPrint ? Theme.of(context).primaryColor : Colors.grey,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            'Cetak Struk',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: _shouldPrint ? Colors.black87 : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Switch(
+                                        value: _shouldPrint,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _shouldPrint = value;
+                                          });
+                                        },
+                                        activeColor: Theme.of(context).primaryColor,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 15),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -261,9 +273,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                         backgroundColor: Colors.red));
                               }
                             },
-                            label: 'Checkout & Print',
-                            icon: Icons.check_circle,
-                            isLoading: billingState.isCheckoutLoading || billingState.isPrinting,
+                            label: _shouldPrint ? 'Checkout & Print' : 'Selesaikan Pembayaran',
+                            icon: _shouldPrint ? Icons.print : Icons.check_circle,
+                            isLoading: billingState.isCheckoutLoading || (billingState.isPrinting && _shouldPrint),
                           ),
                         ],
                       ),

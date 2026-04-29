@@ -52,6 +52,7 @@ class EditProductPage extends StatefulWidget {
 class _EditProductPageState extends State<EditProductPage> {
   final _formKey = GlobalKey<FormState>();
   late String _name;
+  late String _barcode;
   late double _price;
   late int _stock;
   File? _imageFile;
@@ -62,6 +63,7 @@ class _EditProductPageState extends State<EditProductPage> {
   void initState() {
     super.initState();
     _name = widget.product.name;
+    _barcode = widget.product.barcode;
     _price = widget.product.price;
     _stock = widget.product.stock;
 
@@ -169,14 +171,40 @@ class _EditProductPageState extends State<EditProductPage> {
     }
   }
 
+  void _scanBarcode() async {
+    final result = await context.push<String>('/scanner');
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _barcode = result;
+      });
+    }
+  }
+
   void _submit() {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
+      // Check barcode uniqueness if changed
+      if (_barcode != widget.product.barcode) {
+        final productState = context.read<ProductBloc>().state;
+        final existingProduct =
+            productState.products.where((p) => p.barcode == _barcode).firstOrNull;
+
+        if (existingProduct != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Product with barcode "$_barcode" already exists!'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
       final updatedProduct = Product(
         id: widget.product.id,
         name: _name,
-        barcode: widget.product.barcode,
+        barcode: _barcode,
         price: _price,
         stock: _stock,
         image: _imageFile?.path ?? widget.product.image,
@@ -310,41 +338,42 @@ class _EditProductPageState extends State<EditProductPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // ── Barcode (read-only) ───────────────────────────────────
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    margin: const EdgeInsets.only(bottom: 24),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.1)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.qr_code_scanner,
-                            color: AppTheme.primaryColor, size: 28),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('BARCODE',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.primaryColor
-                                        .withValues(alpha: 0.7))),
-                            const SizedBox(height: 2),
-                            Text(widget.product.barcode,
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'monospace')),
-                          ],
+                  // ── Barcode (Editable) ───────────────────────────────────
+                  const InputLabel(text: 'Barcode'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          key: ValueKey(_barcode),
+                          initialValue: _barcode,
+                          decoration: const InputDecoration(
+                            hintText: 'Scan or enter barcode',
+                          ),
+                          validator:
+                              AppValidators.required('Please enter a barcode'),
+                          onSaved: (value) => _barcode = value!,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.qr_code_scanner,
+                              color: AppTheme.primaryColor),
+                          onPressed: _scanBarcode,
+                          padding: const EdgeInsets.all(14),
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 6),
+                  const Text('Tap the icon to open camera scanner',
+                      style:
+                          TextStyle(fontSize: 12, color: Color(0xFF4C669A))),
+                  const SizedBox(height: 24),
 
                   // ── Product Name ──────────────────────────────────────────
                   const InputLabel(text: 'Product Name'),
